@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: sup-chess
+    runtime: node
+    buildCommand: cd frontend && npm ci && npm run build && cd ../backend && npm ci
+    startCommand: cd backend && node server.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: MONGODB_URI
+        value: "mongodb+srv://claudewebdevabdelrahman_db_user:q6Cl0OhhbXwvJsOa@supchess.ad7bny8.mongodb.net/supChess?retryWrites=true&w=majority"
+      - key: JWT_SECRET
+        value: "sup-chess-secure-random-secret-2026-!@#"

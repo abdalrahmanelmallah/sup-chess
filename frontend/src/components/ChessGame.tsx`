@@ -1,0 +1,140 @@
+import React, { useState, useEffect } from 'react';
+import { Chess } from 'chess.js';
+import { Chessboard } from 'react-chessboard';
+import { Trophy, ArrowLeft, User, Star } from 'lucide-react';
+
+const ChessGame = ({ gameMode, botDifficulty, user, onBack }) => {
+  const [game, setGame] = useState(new Chess());
+  const [status, setStatus] = useState('Your turn');
+  const [winner, setWinner] = useState(null);
+  const [playerRating, setPlayerRating] = useState(user?.rating || 1200);
+
+  // THE ONLY FUNCTION THAT MATTERS: Handle the piece drop
+  function onDrop(sourceSquare, targetSquare) {
+    // 1. Create a fresh copy of the current game
+    const gameCopy = new Chess(game.fen());
+
+    // 2. Try to make the move
+    try {
+      const move = gameCopy.move({
+        from: sourceSquare,
+        to: targetSquare,
+        promotion: 'q',
+      });
+
+      // If move is null, it's illegal - return false to snap piece back
+      if (move === null) return false;
+
+      // 3. CRITICAL: Update the state with the new game object
+      setGame(gameCopy);
+
+      // 4. Handle Bot Turn
+      if (gameMode === 'bot') {
+        setTimeout(() => {
+          executeBotMove(gameCopy);
+        }, 400);
+      }
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function executeBotMove(currentGame) {
+    const botGame = new Chess(currentGame.fen());
+    const moves = botGame.moves();
+    if (moves.length === 0) return;
+
+    let move;
+    if (botDifficulty === 'easy') {
+      move = moves[Math.floor(Math.random() * moves.length)];
+    } else if (botDifficulty === 'medium') {
+      const captures = moves.filter(m => m.includes('x'));
+      move = captures.length > 0 ? captures[0] : moves[0];
+    } else {
+      // Basic Hard Bot: Pick first move that captures something, else first move
+      const captures = moves.filter(m => m.includes('x'));
+      move = captures.length > 0 ? captures[0] : moves[0];
+    }
+
+    botGame.move(move);
+    setGame(botGame);
+  }
+
+  useEffect(() => {
+    if (game.isGameOver()) {
+      if (game.isCheckmate()) {
+        setWinner(game.turn() === 'w' ? 'Black' : 'White');
+      } else if (game.isDraw()) {
+        setWinner('Draw');
+      }
+      setStatus('Game Over!');
+    } else {
+      setStatus(game.turn() === 'w' ? 'White to move' : 'Black to move');
+    }
+  }, [game]);
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-slate-950 text-white">
+      <div className="flex items-center mb-6 gap-4">
+        <button onClick={onBack} className="cartoony-button bg-slate-700 hover:bg-slate-600 text-white">
+          <ArrowLeft size={20} />
+        </button>
+        <h1 className="text-4xl font-black uppercase italic text-white">
+          {gameMode === 'bot' ? `Vs ${botDifficulty} Bot` : 'Online Match'}
+        </h1>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
+        <div className="cartoony-card w-full max-w-[600px] p-0 overflow-hidden bg-slate-800 border-slate-700">
+          <Chessboard
+            position={game.fen()}
+            onPieceDrop={onDrop}
+            boardOrientation="white"
+            animationDuration={0}
+            customBoardStyle={{
+              borderRadius: '4px',
+            }}
+          />
+        </div>
+
+        <div className="cartoony-card w-full lg:w-80 flex flex-col gap-6 bg-slate-800 border-slate-700 text-white">
+          <div className="text-center border-b-4 border-slate-700 pb-4">
+            <div className="flex items-center justify-center gap-2 text-slate-400 uppercase text-xs font-black mb-1">
+              <User size={14} /> Your Profile
+            </div>
+            <h2 className="text-2xl font-black uppercase text-white">{user?.username || 'Player'}</h2>
+            <div className="flex items-center justify-center gap-2 text-blue-400 font-black">
+              <Star size={18} fill="currentColor" />
+              <span>Rating: {playerRating}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <h3 className="text-lg font-black uppercase text-center text-slate-500">Status</h3>
+            <div className="flex items-center gap-3 p-4 bg-slate-900 rounded-xl border-4 border-slate-700">
+              <Trophy className="text-yellow-500" size={24} />
+              <span className="font-bold text-lg text-white">{status}</span>
+            </div>
+          </div>
+
+          {winner && (
+            <div className="p-4 bg-green-600 border-4 border-slate-700 rounded-xl text-center animate-bounce">
+              <p className="text-2xl font-black uppercase text-white">Winner: {winner}!</p>
+            </div>
+          )}
+
+          <button
+            onClick={() => setGame(new Chess())}
+            className="cartoony-button w-full bg-red-600 hover:bg-red-500 py-3 text-xl text-white"
+          >
+            Reset Game
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ChessGame;
